@@ -1,0 +1,209 @@
+#!/usr/bin/bash
+
+TERMUX=$(uname -o | grep -o "Android")
+VERSION=3.0.1
+
+if [[ $TERMUX == *'Android'* ]];then
+PREFIX="/data/data/com.termux/files/usr"
+else
+PREFIX="/usr"
+fi
+
+CONFIG=$PREFIX/share/tgbot/conf.config
+DIR=$PREFIX/share/tgbot
+
+if [[ ! -f $CONFIG || ! -d $DIR ]];then
+if [[ $TERMUX == *'Android'* ]];then
+mkdir -p $DIR
+else
+sudo mkdir -p $DIR
+fi
+cd $DIR
+cat <<- CONF > conf.config
+# ::: Warning don't add or remove lines !
+
+# ::: configuration of tgbot program
+# ::: get bot : token from @botfather
+# ::: get id  : hash from reply with /id
+
+
+CONF
+fi
+
+R='\e[38;2;255;60;0m'  Y='\e[38;2;255;200;0m'
+G='\e[38;2;0;240;100m' S='\e[1;0;0m'
+
+if [[ -f $CONFIG || -d $DIR ]];then
+source $CONFIG
+
+URL="https://api.telegram.org/bot$TOKEN/sendMessage"
+
+if [[ $1 == "--help" || $1 == "-h" ]];then
+echo -e "\n${R}•${Y}•${G}•${S}" "`basename $0` v${VERSION} \e[92m<\e[0m/\e[92m>\e[0m"
+
+echo "
+configure '`basename $0`' using this command:
+
+ `basename $0` --configure -token <bot_token> -id <id>
+
+Most used commands:
+
+ `basename $0` --message -t <id> <msg> | send message as tag using this.
+ `basename $0` --message  <msg>        | send message using this.
+ `basename $0` --command  <cmd>        | send message with commands.
+ `basename $0` --sendfile <path>       | send any files using this.
+"
+exit 0
+
+elif [[ $1 == "--version" || $1 == "-v" ]];then
+echo -e "${R}•${Y}•${G}•${S}" "`basename $0` v${VERSION} \e[92m<\e[0m/\e[92m>\e[0m"
+exit 0
+fi
+
+if [[ $1 == "--configure" || $1 == "-conf" ]];then
+if [[ $2 == "-token" ]] | [[ $4 == "-id" ]];then
+sed -i '/TOKEN/d' $CONFIG ; sed -i '6 a TOKEN='"'${3}'" $CONFIG
+sed -i '/ID/d' $CONFIG ; sed -i '8 a ID='"'${5}'" $CONFIG
+echo "[i] configuration saved."
+exit 0
+else
+if [[ $1 == "--configure" ]];then
+echo "
+[i] Some arguments missing !
+
+configure using:
+tgbot --configure -token <bot_token> -id <id>
+"
+exit 1
+elif [[ $1 == "-conf" ]];then
+echo "
+[i] Some arguments missing !
+
+configure using:
+tgbot -conf -token <bot_token> -id <id>
+"
+exit 1
+fi
+fi
+fi
+
+if [[ ${#TOKEN} != "0" ]] | [[ ${#ID} != "0" ]];then
+if [[ $1 == "--message" || $1 == "-m" ]];then
+if [[ $2 == "-tag" || $2 == "-t" ]];then
+MESSAGE="${@:4}"
+TAG="${3}"
+curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendmessage" -d "parse_mode=MarkdownV2" -d "chat_id=${ID}" -d "text=[${MESSAGE}](tg://user?id=${TAG})" &> $DIR/tgbot.log || echo $? > $DIR/tgbot.log
+
+LOGS=`cat $DIR/tgbot.log`
+NETCONF() {
+curl -Is http://www.google.com &> /dev/null
+}
+NETCONF
+
+  if [[ "${?}" != "0" ]];then
+echo "type :: connection error ‘${LOGS}’"
+exit 0
+
+elif [[ "${LOGS}" == *"true"* ]];then
+echo -e "\e[92mtrue\e[0m :: type @message :: send : $MESSAGE"
+exit 0
+
+elif [[ "${LOGS}" == *"false"* ]];then
+echo -e "\e[91mfalse\e[0m :: type @message :: send : $MESSAGE"
+exit 0
+fi
+fi
+
+MESSAGE="${@:2}"
+curl -s -X POST $URL -d chat_id=$ID -d text="${MESSAGE}" &> $DIR/tgbot.log || echo $? > $DIR/tgbot.log
+
+LOGS=`cat $DIR/tgbot.log`
+NETCONF() {
+curl -Is http://www.google.com &> /dev/null
+}
+NETCONF
+
+  if [[ "${?}" != "0" ]];then
+echo "type :: connection error ‘${LOGS}’"
+exit 0
+
+elif [[ "${LOGS}" == *"true"* ]];then
+echo -e "\e[92mtrue\e[0m :: type @message :: send : $MESSAGE"
+exit 0
+
+elif [[ "${LOGS}" == *"false"* ]];then
+echo -e "\e[91mfalse\e[0m :: type @message :: send : $MESSAGE"
+exit 0
+fi
+
+elif [[ $1 == "--command" || $1 == "-c" ]];then
+COMMAND="`${@:2} | cat`"
+curl -s -X POST $URL -d chat_id=$ID -d text="${COMMAND}" &> $DIR/tgbot.log || echo $? > $DIR/tgbot.log
+
+LOGS=`cat $DIR/tgbot.log`
+NETCONF() {
+curl -Is http://www.google.com &> /dev/null
+}
+NETCONF
+
+  if [[ "${?}" != "0" ]];then
+echo "type :: connection error ‘${LOGS}’"
+exit 0
+
+elif [[ "${LOGS}" == *"true"* ]];then
+echo -e "\e[92mtrue\e[0m :: type @message :: send : $COMMAND"
+exit 0
+
+elif [[ "${LOGS}" == *"false"* ]];then
+echo -e "\e[91mfalse\e[0m :: type @message :: send : $COMMAND"
+exit 0
+fi
+
+elif [[ $1 == "--sendfile" || $1 == "-s" ]];then
+FILE="${@:2}"
+curl -F document=@"${FILE}" https://api.telegram.org/bot${TOKEN}/sendDocument\?chat_id=${ID} &> $DIR/tgbot.log || echo $? > $DIR/tgbot.log
+
+LOGS=`cat $DIR/tgbot.log`
+NETCONF() {
+curl -Is http://www.google.com &> /dev/null
+}
+NETCONF
+
+  if [[ "${?}" != "0" ]];then
+echo "type :: connection error ‘${LOGS}’"
+exit 0
+
+elif [[ "${LOGS}" == "26" ]];then
+echo -e "\e[91mfalse\e[0m :: type @file :: send : $FILE"
+exit 0
+
+elif [[ "${LOGS}" == *"true"* ]];then
+echo -e "\e[92mtrue\e[0m :: type @file :: send : $FILE"
+exit 0
+
+elif [[ "${LOGS}" == *"false"* ]];then
+echo -e "\e[91mfalse\e[0m :: type @file :: send : $FILE"
+exit 0
+fi
+fi
+else
+echo -e "
+tgbot ${VERSION} \e[92m<\e[0m/\e[92m>\e[0m
+
+configure tgbot to access that features.
+configure using:
+tgbot --configure -token <bot_token> -id <id>
+"
+exit 1
+fi
+fi
+
+if [[ $@ != $0 ]] | [[ ${#@} -lt 1 ]];then
+echo "`basename $0`: no command specified! '${@}'
+Try '`basename $0` --help' for more information."
+exit 0
+else
+echo "`basename $0`: no command specified! '${@}'
+Try '`basename $0` --help' for more information."
+exit 1
+fi
